@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industrial Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div id="alerts-container"></div>
+
+  <div class="dashboard">
+    <div class="card">
+      <h2>System Status</h2>
+      <div id="system-status" class="metric green">Online</div>
+      <div id="last-updated">Last Updated: --:--:--</div>
+    </div>
+
+    <div class="card">
+      <h2>Temperature</h2>
+      <div id="temperature" class="metric green">-- °C</div>
+    </div>
+
+    <div class="card">
+      <h2>Humidity</h2>
+      <div id="humidity" class="metric green">-- %</div>
+    </div>
+
+    <div class="card">
+      <h2>Pressure</h2>
+      <div id="pressure" class="metric green">-- Pa</div>
+    </div>
+  </div>
+
+  <button id="chatbot-btn">💬</button>
+
+  <div id="chat-panel">
+    <div id="chat-header">Industrial Bot</div>
+    <div id="chat-messages">
+      <div class="message bot-msg">Hello! I am your industrial assistant.</div>
+    </div>
+    <div id="chat-input">
+      <input type="text" id="user-input" placeholder="Type message...">
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
