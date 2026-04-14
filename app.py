@@ -37,7 +37,7 @@ def init_db():
 # -----------------------------
 # Serial setup
 # -----------------------------
-SERIAL_PORT = "/dev/tty00"   
+SERIAL_PORT = "/dev/ttyUSB0"   
 BAUD_RATE = 9600
 nano = None
 
