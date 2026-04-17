@@ -7,6 +7,20 @@ import time
 app = Flask(__name__)
 
 # -----------------------------
+# Speak to chat
+# -----------------------------
+
+#need to make sure we have these libraries to run it
+#import json
+#import pyaudio
+#from vosk import Model, KaldiRecognizer
+
+#vosk_model = Model(#path to the model here___)
+#rec = KaldiRecognizer(vosk_model, 16000)
+#mic = pyaudio.PyAudio()
+
+
+# -----------------------------
 # AI setup
 # -----------------------------
 try:
@@ -175,6 +189,31 @@ def ask():
         print(f"DB Error: {e}")
 
     return jsonify({"response": response})
+
+#Can't test without the nano, but this should put what it hears in the text box. 
+#@app.route("/listen", methods=["POST"])
+#def listen():
+    #try:
+        #stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000, 
+                          #input=True, frames_per_buffer=8192)
+        #stream.start_stream()
+        #text = ""
+        
+        #while True:
+            #data = stream.read(4096, exception_on_overflow=False)
+            #if rec.AcceptWaveform(data):
+                #result = json.loads(rec.Result())
+                #text = result.get("text", "")
+                #break 
+        
+        #stream.stop_stream()
+        #stream.close()
+        
+        #return jsonify({"transcript": text})
+
+    #except Exception as e:
+        #print(f"STT Error: {e}")
+        #return jsonify({"transcript": "", "error": str(e)}), 500
 
 if __name__ == "__main__":
     init_db()

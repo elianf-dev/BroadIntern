@@ -11,6 +11,7 @@ const chatPanel = document.getElementById('chat-panel');
 const chatMessages = document.getElementById('chat-messages');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
+// const sttBtn = document.getElementById('stt-btn');
 
 // ---- CHAT TOGGLE ----
 chatbotBtn.addEventListener('click', () => {
@@ -86,6 +87,17 @@ sendBtn.addEventListener('click', () => {
 userInput.addEventListener('keypress', e => {
   if (e.key === 'Enter') sendBtn.click();
 });
+
+/*
+// ---- SPEAK TO CHAT ----
+sttBtn.addEventListener('click', async () => {
+    const res = await fetch('/listen', { method: 'POST' });
+    const data = await res.json();
+    
+    userInput.value = data.transcript;
+});
+
+*/
 
 // ---- SIMULATED DATA ----
 function random(min, max) {
