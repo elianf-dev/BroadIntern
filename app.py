@@ -8,17 +8,14 @@ import threading
 app = Flask(__name__)
 
 # -----------------------------
-# Speak to chat
+# Speak to chat (uncomment below + install libs to enable voice input)
 # -----------------------------
-
-#need to make sure we have these libraries to run it
-#import json
-#import pyaudio
-#from vosk import Model, KaldiRecognizer
-
-#vosk_model = Model(#path to the model here___)
-#rec = KaldiRecognizer(vosk_model, 16000)
-#mic = pyaudio.PyAudio()
+# import json
+# import pyaudio
+# from vosk import Model, KaldiRecognizer
+# vosk_model = Model(# path to the model here )
+# rec = KaldiRecognizer(vosk_model, 16000)
+# mic = pyaudio.PyAudio()
 
 
 # -----------------------------
@@ -47,8 +44,14 @@ def init_db():
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sensor_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            raw TEXT,
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            temp      REAL,
+            hum       REAL,
+            dist      REAL,
+            smoke     INTEGER,
+            joy_x     INTEGER,
+            joy_y     INTEGER,
+            raw       TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -60,8 +63,8 @@ def init_db():
 # Serial setup
 # -----------------------------
 SERIAL_PORT = "/dev/ttyUSB0"
-BAUD_RATE = 9600
-nano = None
+BAUD_RATE   = 9600
+nano        = None
 serial_lock = threading.Lock()
 
 def connect_nano():
@@ -90,16 +93,13 @@ def send_serial_command(command):
             nano.write(f"{command}\n".encode())
             time.sleep(0.2)
 
-            # Read a few lines because DATA: streams continuously
+            # Read several lines — DATA: streams continuously, skip those
             for _ in range(10):
                 line = nano.readline().decode(errors="ignore").strip()
                 if not line:
                     continue
-
-                # Ignore sensor stream lines
                 if line.startswith("DATA:"):
                     continue
-
                 return True, line
 
             return True, "No ACK received"
@@ -110,6 +110,7 @@ def send_serial_command(command):
 
 # -----------------------------
 # Sensor stream background thread
+# Nano format: DATA:temp,hum,dist,smoke,joy_x,joy_y
 # -----------------------------
 def read_sensor_stream():
     global nano
@@ -126,14 +127,27 @@ def read_sensor_stream():
             if not line.startswith("DATA:"):
                 continue
 
-            payload = line[5:]  # Strip "DATA:" prefix
-            print(f"[SENSOR] {payload}")
+            raw = line[5:]  # Strip "DATA:" prefix
+            print(f"[SENSOR] {raw}")
+
+            parts = raw.split(",")
+            if len(parts) != 6:
+                print(f"[SENSOR] Unexpected format, skipping: {raw}")
+                continue
+
+            temp  = float(parts[0])
+            hum   = float(parts[1])
+            dist  = float(parts[2])
+            smoke = int(parts[3])
+            joy_x = int(parts[4])
+            joy_y = int(parts[5])
 
             conn = sqlite3.connect("chatbot.db")
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO sensor_data (raw) VALUES (?)",
-                (payload,)
+                """INSERT INTO sensor_data (temp, hum, dist, smoke, joy_x, joy_y, raw)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (temp, hum, dist, smoke, joy_x, joy_y, raw)
             )
             conn.commit()
             conn.close()
@@ -149,6 +163,33 @@ def read_sensor_stream():
 def index():
     return render_template("index.html")
 
+@app.route("/sensor", methods=["GET"])
+def get_sensor_data():
+    try:
+        conn = sqlite3.connect("chatbot.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT temp, hum, dist, smoke, joy_x, joy_y, raw, timestamp
+               FROM sensor_data ORDER BY id DESC LIMIT 1"""
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return jsonify({
+                "temp":      row[0],
+                "hum":       row[1],
+                "dist":      row[2],
+                "smoke":     row[3],
+                "joy_x":     row[4],
+                "joy_y":     row[5],
+                "raw":       row[6],
+                "timestamp": row[7]
+            })
+        else:
+            return jsonify({"raw": None, "timestamp": None})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/ask", methods=["POST"])
 def ask():
     user_input = request.json.get("message", "").strip()
@@ -159,7 +200,7 @@ def ask():
     if nlp is None:
         return jsonify({"response": "AI engine is not available. Install the spaCy model first."})
 
-    doc = nlp(user_input)
+    doc    = nlp(user_input)
     tokens = [token.lemma_.lower() for token in doc]
     print(f"Tokens: {tokens}")
 
@@ -234,29 +275,26 @@ def ask():
 
     return jsonify({"response": response})
 
-@app.route("/listen", methods=["POST"])
-def listen():
-    try:
-        stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000,
-                          #input=True, frames_per_buffer=8192)
-        stream.start_stream()
-        text = ""
-
-        while True:
-            data = stream.read(4096, exception_on_overflow=False)
-            if rec.AcceptWaveform(data):
-                result = json.loads(rec.Result())
-                text = result.get("text", "")
-                break
-
-        stream.stop_stream()
-        stream.close()
-
-        return jsonify({"transcript": text})
-
-    except Exception as e:
-        print(f"STT Error: {e}")
-        return jsonify({"transcript": "", "error": str(e)}), 500
+# Voice input route — uncomment when vosk/pyaudio are installed and imports above are enabled
+# @app.route("/listen", methods=["POST"])
+# def listen():
+#     try:
+#         stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000,
+#                           input=True, frames_per_buffer=8192)
+#         stream.start_stream()
+#         text = ""
+#         while True:
+#             data = stream.read(4096, exception_on_overflow=False)
+#             if rec.AcceptWaveform(data):
+#                 result = json.loads(rec.Result())
+#                 text = result.get("text", "")
+#                 break
+#         stream.stop_stream()
+#         stream.close()
+#         return jsonify({"transcript": text})
+#     except Exception as e:
+#         print(f"STT Error: {e}")
+#         return jsonify({"transcript": "", "error": str(e)}), 500
 
 if __name__ == "__main__":
     init_db()
