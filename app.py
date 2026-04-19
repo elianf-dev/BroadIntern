@@ -3,6 +3,7 @@ import sqlite3
 import spacy
 import serial
 import time
+import threading
 
 app = Flask(__name__)
 
@@ -44,6 +45,13 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sensor_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            raw TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
     print("--- DATABASE INITIALIZED ---")
@@ -51,9 +59,10 @@ def init_db():
 # -----------------------------
 # Serial setup
 # -----------------------------
-SERIAL_PORT = "/dev/ttyUSB0"   
+SERIAL_PORT = "/dev/ttyUSB0"
 BAUD_RATE = 9600
 nano = None
+serial_lock = threading.Lock()
 
 def connect_nano():
     global nano
@@ -71,32 +80,67 @@ def connect_nano():
 def send_serial_command(command):
     global nano
 
-    if nano is None or not nano.is_open:
-        if not connect_nano():
-            return False, "Arduino not connected"
+    with serial_lock:
+        if nano is None or not nano.is_open:
+            if not connect_nano():
+                return False, "Arduino not connected"
 
-    try:
-        nano.reset_input_buffer()
-        nano.write(f"{command}\n".encode())
-        time.sleep(0.2)
+        try:
+            nano.reset_input_buffer()
+            nano.write(f"{command}\n".encode())
+            time.sleep(0.2)
 
-        # Read a few lines because DATA: streams continuously
-        for _ in range(10):
-            line = nano.readline().decode(errors="ignore").strip()
-            if not line:
+            # Read a few lines because DATA: streams continuously
+            for _ in range(10):
+                line = nano.readline().decode(errors="ignore").strip()
+                if not line:
+                    continue
+
+                # Ignore sensor stream lines
+                if line.startswith("DATA:"):
+                    continue
+
+                return True, line
+
+            return True, "No ACK received"
+
+        except Exception as e:
+            print(f"--- SERIAL WRITE ERROR: {e} ---")
+            return False, str(e)
+
+# -----------------------------
+# Sensor stream background thread
+# -----------------------------
+def read_sensor_stream():
+    global nano
+    while True:
+        try:
+            if nano is None or not nano.is_open:
+                time.sleep(2)
+                connect_nano()
                 continue
 
-            # Ignore sensor stream lines
-            if line.startswith("DATA:"):
+            with serial_lock:
+                line = nano.readline().decode(errors="ignore").strip()
+
+            if not line.startswith("DATA:"):
                 continue
 
-            return True, line
+            payload = line[5:]  # Strip "DATA:" prefix
+            print(f"[SENSOR] {payload}")
 
-        return True, "No ACK received"
+            conn = sqlite3.connect("chatbot.db")
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO sensor_data (raw) VALUES (?)",
+                (payload,)
+            )
+            conn.commit()
+            conn.close()
 
-    except Exception as e:
-        print(f"--- SERIAL WRITE ERROR: {e} ---")
-        return False, str(e)
+        except Exception as e:
+            print(f"--- STREAM READ ERROR: {e} ---")
+            time.sleep(1)
 
 # -----------------------------
 # Routes
@@ -190,32 +234,35 @@ def ask():
 
     return jsonify({"response": response})
 
-#Can't test without the nano, but this should put what it hears in the text box. 
-#@app.route("/listen", methods=["POST"])
-#def listen():
-    #try:
-        #stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000, 
+@app.route("/listen", methods=["POST"])
+def listen():
+    try:
+        stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000,
                           #input=True, frames_per_buffer=8192)
-        #stream.start_stream()
-        #text = ""
-        
-        #while True:
-            #data = stream.read(4096, exception_on_overflow=False)
-            #if rec.AcceptWaveform(data):
-                #result = json.loads(rec.Result())
-                #text = result.get("text", "")
-                #break 
-        
-        #stream.stop_stream()
-        #stream.close()
-        
-        #return jsonify({"transcript": text})
+        stream.start_stream()
+        text = ""
 
-    #except Exception as e:
-        #print(f"STT Error: {e}")
-        #return jsonify({"transcript": "", "error": str(e)}), 500
+        while True:
+            data = stream.read(4096, exception_on_overflow=False)
+            if rec.AcceptWaveform(data):
+                result = json.loads(rec.Result())
+                text = result.get("text", "")
+                break
+
+        stream.stop_stream()
+        stream.close()
+
+        return jsonify({"transcript": text})
+
+    except Exception as e:
+        print(f"STT Error: {e}")
+        return jsonify({"transcript": "", "error": str(e)}), 500
 
 if __name__ == "__main__":
     init_db()
     connect_nano()
+
+    sensor_thread = threading.Thread(target=read_sensor_stream, daemon=True)
+    sensor_thread.start()
+
     app.run(host="0.0.0.0", port=5000, debug=True)
