@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Industrial Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
+  <!-- Alerts -->
   <div id="alerts-container"></div>
 
+  <!-- Dashboard -->
   <div class="dashboard">
+
     <div class="card">
       <h2>System Status</h2>
       <div id="system-status" class="metric green">Online</div>
@@ -28,13 +31,36 @@
     </div>
 
     <div class="card">
-      <h2>Pressure</h2>
-      <div id="pressure" class="metric green">-- Pa</div>
+      <h2>Distance (HC-SR04)</h2>
+      <div id="distance" class="metric green">-- cm</div>
     </div>
+
+    <div class="card">
+      <h2>Smoke / MQ-2</h2>
+      <div id="smoke" class="metric green">-- </div>
+    </div>
+
+    <div class="card">
+      <h2>Joystick</h2>
+      <div id="joystick" class="metric green">X: -- / Y: --</div>
+    </div>
+
+    <div class="card">
+      <h2>Buzzer</h2>
+      <div id="buzzer-status" class="metric green">OFF</div>
+    </div>
+
+    <div class="card">
+      <h2>LED</h2>
+      <div id="led-status" class="metric green">OFF</div>
+    </div>
+
   </div>
 
+  <!-- Chatbot Button -->
   <button id="chatbot-btn">💬</button>
 
+  <!-- Chat Panel -->
   <div id="chat-panel">
     <div id="chat-header">Industrial Bot</div>
     <div id="chat-messages">
@@ -42,12 +68,10 @@
     </div>
     <div id="chat-input">
       <input type="text" id="user-input" placeholder="Type message...">
-      <!-- <button id="stt-btn">STT</button>
-            "stt" will be replaced with a more fitting name or image -->
       <button id="send-btn">Send</button>
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="scripts.js"></script>
 </body>
 </html>
