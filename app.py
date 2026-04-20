@@ -62,10 +62,11 @@ def init_db():
 # -----------------------------
 # Serial setup
 # -----------------------------
-SERIAL_PORT = "/dev/ttyUSB0"
-BAUD_RATE   = 9600
-nano        = None
-serial_lock = threading.Lock()
+SERIAL_PORT    = "/dev/ttyUSB0"
+BAUD_RATE      = 9600
+nano           = None
+serial_lock    = threading.Lock()
+sending_command = threading.Event()  # FIX: signals stream thread to pause during commands
 
 def connect_nano():
     global nano
@@ -83,9 +84,14 @@ def connect_nano():
 def send_serial_command(command):
     global nano
 
+    # FIX: signal stream thread to pause, wait for it to finish current read
+    sending_command.set()
+    time.sleep(0.3)
+
     with serial_lock:
         if nano is None or not nano.is_open:
             if not connect_nano():
+                sending_command.clear()
                 return False, "Arduino not connected"
 
         try:
@@ -100,12 +106,15 @@ def send_serial_command(command):
                     continue
                 if line.startswith("DATA:"):
                     continue
+                sending_command.clear()  # FIX: resume stream thread
                 return True, line
 
+            sending_command.clear()
             return True, "No ACK received"
 
         except Exception as e:
             print(f"--- SERIAL WRITE ERROR: {e} ---")
+            sending_command.clear()  # FIX: always resume even on error
             return False, str(e)
 
 # -----------------------------
@@ -116,6 +125,11 @@ def read_sensor_stream():
     global nano
     while True:
         try:
+            # FIX: pause stream while a command is being sent
+            if sending_command.is_set():
+                time.sleep(0.1)
+                continue
+
             if nano is None or not nano.is_open:
                 time.sleep(2)
                 connect_nano()
