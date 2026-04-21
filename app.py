@@ -179,6 +179,9 @@ def read_sensor_stream():
         except Exception as e:
             print(f"--- STREAM READ ERROR: {e} ---")
             time.sleep(1)
+            if nano and nano.is_open:
+                nano.close()
+            nano = None
 
 # -----------------------------
 # Routes
