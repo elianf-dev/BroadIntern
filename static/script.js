@@ -264,3 +264,95 @@ async function updateData() {
 
 setInterval(updateData, 2000);
 updateData();
+
+// ---- CHARTS ----
+const chartOptions = (label, color) => ({
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label,
+            data: [],
+            borderColor: color,
+            backgroundColor: color + '22',
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.3,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#777', maxTicksLimit: 6 }, grid: { color: '#333' } },
+            y: { ticks: { color: '#777' }, grid: { color: '#333' } }
+        }
+    }
+});
+
+const tempChart = new Chart(document.getElementById('tempChart'), chartOptions('Temp °C', '#f44336'));
+const humChart  = new Chart(document.getElementById('humChart'),  chartOptions('Humidity %', '#4caf50'));
+const distChart = new Chart(document.getElementById('distChart'), chartOptions('Distance cm', '#00bcd4'));
+
+function addChartPoint(chart, label, value) {
+    if (value === -1) return;
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update();
+}
+
+// ---- HAZARD BANNER ----
+const hazardBanner = document.getElementById('hazard-banner');
+
+function setHazard(active) {
+    hazardBanner.style.display = active ? 'block' : 'none';
+}
+
+// ---- EXTEND updateData TO FEED CHARTS + HAZARD ----
+const _origUpdateData = updateData;
+async function updateData() {
+    await _origUpdateData();
+
+    // Feed charts from /history endpoint
+    try {
+        const res  = await fetch('/history?limit=20');
+        const rows = await res.json();
+        if (!rows || rows.error) return;
+
+        // Rebuild charts from fresh history (reversed so oldest first)
+        const sorted = rows.slice().reverse();
+        tempChart.data.labels = [];
+        tempChart.data.datasets[0].data = [];
+        humChart.data.labels  = [];
+        humChart.data.datasets[0].data  = [];
+        distChart.data.labels = [];
+        distChart.data.datasets[0].data = [];
+
+        sorted.forEach(r => {
+            const label = r.timestamp ? r.timestamp.slice(11, 19) : '';
+            if (r.temp !== -1) { tempChart.data.labels.push(label); tempChart.data.datasets[0].data.push(r.temp); }
+            if (r.hum  !== -1) { humChart.data.labels.push(label);  humChart.data.datasets[0].data.push(r.hum);  }
+            if (r.dist !== -1) { distChart.data.labels.push(label); distChart.data.datasets[0].data.push(r.dist); }
+        });
+
+        tempChart.update();
+        humChart.update();
+        distChart.update();
+
+        // Hazard banner — check latest reading's joystick
+        if (rows.length > 0) {
+            const latest = rows[0];
+            const inHazard = latest.joy_x <= 100 && latest.joy_y <= 100;
+            setHazard(inHazard);
+        }
+
+    } catch(e) {
+        console.error('History fetch error:', e);
+    }
+}
