@@ -166,3 +166,177 @@ h2 {
     transition: background-color 0.2s ease;
     margin: 0 auto;
 }
+
+/* Hazard Banner */
+#hazard-banner {
+  background: #ff5722;
+  color: white;
+  text-align: center;
+  padding: 12px;
+  font-weight: bold;
+  font-size: 1.1em;
+  letter-spacing: 1px;
+  animation: hazard-pulse 0.8s infinite alternate;
+}
+
+@keyframes hazard-pulse {
+  from { background: #ff5722; }
+  to   { background: #b71c1c; }
+}
+
+/* Charts */
+.charts-section {
+  padding: 10px 20px 30px;
+}
+
+.charts-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.chart-card {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 16px;
+  flex: 1 1 280px;
+}
+
+.chart-card h3 {
+  color: #aaa;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.metric.green { color: #4caf50; }
+.metric.yellow { color: #ffc107; }
+.metric.red { color: #f44336; }
+
+/* Alerts */
+#alerts-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+}
+
+.alert {
+  background: #f44336;
+  color: white;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+/* Chatbot */
+#chatbot-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 15px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+#chat-panel {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 300px;
+  height: 400px;
+  background: #2a2a2a;
+  display: none;
+  flex-direction: column;
+  border-radius: 8px;
+}
+
+#chat-header {
+  background: #333;
+  padding: 10px;
+  color: white;
+}
+
+#chat-messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.message {
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.bot-msg { background: #444; }
+.user-msg { background: #4caf50; align-self: flex-end; }
+
+#chat-input {
+  display: flex;
+}
+
+#chat-input input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: #1e1e1e;
+  color: white;
+}
+
+#chat-input button {
+  padding: 10px;
+  background: #4caf50;
+  border: none;
+  color: white;
+}
+
+.prog-bar {
+  width: 100%;
+  background-color: #333;
+  border-radius: 4px;
+  height: 15px;
+  margin-top: 15px;
+  border: 1px solid #444;
+  overflow: hidden;
+}
+
+.temp-prog-fill {
+  height: 100%;
+  width: 0%; 
+  background-color: #f44336;
+  transition: width 0.4s ease-out;
+}
+
+.dist-prog-fill {
+  height: 100%;
+  width: 0%; 
+  background-color: #00bcd4;
+  transition: width 0.4s ease-out;
+}
+
+.hum-prog-fill {
+  height: 100%;
+  width: 0%; 
+  background-color: #4caf50;
+  transition: width 0.4s ease-out, background-color 0.4s;
+}
+
+.smoke-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.status-light {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: transparent; 
+    border: 2px solid #444; 
+    transition: background-color 0.2s ease;
+    margin: 0 auto;
+}
