@@ -14,6 +14,7 @@ const chatPanel      = document.getElementById('chat-panel');
 const chatMessages   = document.getElementById('chat-messages');
 const userInput      = document.getElementById('user-input');
 const sendBtn        = document.getElementById('send-btn');
+const hazardBanner   = document.getElementById('hazard-banner');
 
 // ---- CHAT TOGGLE ----
 chatbotBtn.addEventListener('click', () => {
@@ -22,7 +23,6 @@ chatbotBtn.addEventListener('click', () => {
 });
 
 // ---- ADD MESSAGE ----
-// FIX: merged LED/Buzzer state logic directly here — no redefinition
 function addMessage(text, sender) {
     const msg = document.createElement('div');
     msg.classList.add('message');
@@ -33,40 +33,26 @@ function addMessage(text, sender) {
 
     if (sender === 'bot') {
         const t = text.toLowerCase();
-
         if (t.includes('led_on') || t.includes('led command sent')) {
-            ledStatusEl.textContent = "ON";
-            setColor(ledStatusEl, 'green');
+            ledStatusEl.textContent = "ON"; setColor(ledStatusEl, 'green');
         } else if (t.includes('led_off') || t.includes('led off command')) {
-            ledStatusEl.textContent = "OFF";
-            setColor(ledStatusEl, 'yellow');
+            ledStatusEl.textContent = "OFF"; setColor(ledStatusEl, 'yellow');
         }
-
         if (t.includes('buzz_on') || t.includes('buzzer command sent')) {
-            buzzerStatusEl.textContent = "ON";
-            setColor(buzzerStatusEl, 'red');
+            buzzerStatusEl.textContent = "ON"; setColor(buzzerStatusEl, 'red');
         } else if (t.includes('buzz_off') || t.includes('buzzer off command')) {
-            buzzerStatusEl.textContent = "OFF";
-            setColor(buzzerStatusEl, 'green');
+            buzzerStatusEl.textContent = "OFF"; setColor(buzzerStatusEl, 'green');
         }
-
         if (t.includes('alert_on') || t.includes('alert command sent')) {
-            ledStatusEl.textContent    = "ALERT BLINK";
-            buzzerStatusEl.textContent = "ALERT ON";
-            setColor(ledStatusEl,    'red');
-            setColor(buzzerStatusEl, 'red');
+            ledStatusEl.textContent = "ALERT BLINK"; setColor(ledStatusEl, 'red');
+            buzzerStatusEl.textContent = "ALERT ON";  setColor(buzzerStatusEl, 'red');
         } else if (t.includes('alert_off') || t.includes('alert off command')) {
-            ledStatusEl.textContent    = "OFF";
-            buzzerStatusEl.textContent = "OFF";
-            setColor(ledStatusEl,    'yellow');
-            setColor(buzzerStatusEl, 'green');
+            ledStatusEl.textContent = "OFF"; setColor(ledStatusEl, 'yellow');
+            buzzerStatusEl.textContent = "OFF"; setColor(buzzerStatusEl, 'green');
         }
-
         if (t.includes('all off command')) {
-            ledStatusEl.textContent    = "OFF";
-            buzzerStatusEl.textContent = "OFF";
-            setColor(ledStatusEl,    'yellow');
-            setColor(buzzerStatusEl, 'green');
+            ledStatusEl.textContent = "OFF"; setColor(ledStatusEl, 'yellow');
+            buzzerStatusEl.textContent = "OFF"; setColor(buzzerStatusEl, 'green');
         }
     }
 }
@@ -80,7 +66,6 @@ function showAlert(msg) {
     if (msg === lastAlertMsg && now - lastAlertTime < 5000) return;
     lastAlertMsg  = msg;
     lastAlertTime = now;
-
     const alertEl = document.createElement('div');
     alertEl.className = 'alert';
     alertEl.textContent = msg;
@@ -94,11 +79,15 @@ function setColor(el, level) {
     el.classList.add(level);
 }
 
+// ---- HAZARD BANNER ----
+function setHazard(active) {
+    if (hazardBanner) hazardBanner.style.display = active ? 'block' : 'none';
+}
+
 // ---- LOCAL COMMAND FALLBACK ----
 function handleCommand(input) {
     input = input.toLowerCase();
     let responses = [];
-
     if (input.includes('temp') || input.includes('temperature'))
         responses.push(`Temperature: ${tempEl.textContent}`);
     if (input.includes('hum') || input.includes('humidity'))
@@ -107,8 +96,6 @@ function handleCommand(input) {
         responses.push(`Distance: ${distEl.textContent}`);
     if (input.includes('smoke') || input.includes('gas') || input.includes('mq'))
         responses.push(`Smoke/MQ-2: ${smokeEl.textContent}`);
-    if (input.includes('joy') || input.includes('joystick'))
-        responses.push(`Joystick: ${joystickEl.textContent}`);
     if (input.includes('buzz') || input.includes('buzzer'))
         responses.push(`Buzzer: ${buzzerStatusEl.textContent}`);
     if (input.includes('led') || input.includes('light'))
@@ -119,10 +106,8 @@ function handleCommand(input) {
         showAlert("Manual alert triggered!");
         responses.push("Alert triggered successfully");
     }
-
     if (responses.length === 0)
-        return "I didn't understand. Try: temperature, humidity, distance, smoke, joystick, buzzer, led, or status.";
-
+        return "I didn't understand. Try: temperature, humidity, distance, smoke, buzzer, led, or status.";
     return responses.join("\n");
 }
 
@@ -132,147 +117,27 @@ sendBtn.addEventListener('click', () => {
     if (!text) return;
     addMessage(text, 'user');
     userInput.value = '';
-
     fetch('/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text })
     })
     .then(res => res.json())
-    .then(data => {
-        addMessage(data.response, 'bot');
-    })
-    .catch(() => {
-        setTimeout(() => addMessage(handleCommand(text), 'bot'), 300);
-    });
+    .then(data => addMessage(data.response, 'bot'))
+    .catch(() => setTimeout(() => addMessage(handleCommand(text), 'bot'), 300));
 });
 
 userInput.addEventListener('keypress', e => {
     if (e.key === 'Enter') sendBtn.click();
 });
 
-// ---- LIVE SENSOR DATA ----
-async function updateData() {
-    try {
-        const res  = await fetch('/sensor');
-        const data = await res.json();
-
-        if (!data.raw) {
-            systemStatusEl.textContent = "Waiting for sensor data...";
-            setColor(systemStatusEl, 'yellow');
-            return;
-        }
-
-        const temp  = data.temp;
-        const hum   = data.hum;
-        const dist  = data.dist;
-        const smoke = data.smoke;
-        const joyX  = data.joy_x;
-        const joyY  = data.joy_y;
-
-        // Temperature
-        if (temp === -1) {
-            tempEl.textContent = "DHT11 Error";
-            setColor(tempEl, 'red');
-        } else {
-            tempEl.textContent = `${temp.toFixed(1)} °C`;
-            setColor(tempEl, temp > 35 ? 'red' : temp > 28 ? 'yellow' : 'green');
-        }
-        
-        if (temp !== -1) {
-            tempEl.textContent = `${temp.toFixed(1)} °C`;
-            
-            const tempPercent = Math.min(Math.max((temp / 60) * 100, 0), 100);
-            
-            const tBar = document.getElementById('temp-bar');
-            tBar.style.width = tempPercent + "%";
-
-        }
-
-        // Humidity
-        if (hum === -1) {
-            humEl.textContent = "DHT11 Error";
-            setColor(humEl, 'red');
-        } else {
-            humEl.textContent = `${hum.toFixed(1)} %`;
-        
-            const humColor = hum > 80 ? 'red' : hum > 60 ? 'yellow' : 'green';
-        
-            setColor(humEl, humColor);
-        
-            const hBar = document.getElementById('hum-bar');
-            if (hBar) {
-                hBar.style.width = `${hum}%`;
-                hBar.style.backgroundColor = humColor === 'red' ? '#f44336' : 
-                                             humColor === 'yellow' ? '#ffc107' : '#4caf50';
-            }
-        }
-
-        // Distance
-        if (dist === -1) {
-            distEl.textContent = "No object detected";
-            setColor(distEl, 'yellow');
-            if (dBar) dBar.style.width = "0%";
-        } else {
-            distEl.textContent = `${dist.toFixed(1)} cm`;
-        
-            const distColor = dist < 10 ? 'red' : dist < 30 ? 'yellow' : 'green';
-            setColor(distEl, distColor);
-        
-            const proximityPercent = Math.min(Math.max(100 - (dist / 400) * 100, 0), 100);
-        
-            const dBar = document.getElementById('dist-bar');
-            if (dBar) {
-                dBar.style.width = proximityPercent + "%";
-                dBar.style.backgroundColor = distColor === 'red' ? '#f44336' : 
-                                             distColor === 'yellow' ? '#ffc107' : '#4caf50';
-            }
-        }
-
-        // Smoke
-        smokeEl.textContent = `${smoke} ${smoke > 400 ? "ALERT" : "Clear"}`;
-        setColor(smokeEl, smoke > 400 ? 'red' : smoke > 300 ? 'yellow' : 'green');
-        if (smoke > 400) showAlert("Smoke detected! Level: " + smoke);
-        
-        const sLight = document.getElementById('smoke-status-light');
-        if (sLight) {
-            if (smoke > 400) {
-                sLight.style.backgroundColor = "#f44336"; 
-                sLight.style.borderColor = "#f44336";
-            } else {
-                sLight.style.backgroundColor = "transparent";
-                sLight.style.borderColor = "#444";
-            }
-        }
-
-
-        // Joystick
-        joystickEl.textContent = `X: ${joyX} / Y: ${joyY}`;
-        setColor(joystickEl, 'green');
-
-        // System
-        systemStatusEl.textContent = "ONLINE";
-        setColor(systemStatusEl, 'green');
-        lastUpdatedEl.textContent  = "Last Updated: " + new Date().toLocaleTimeString();
-
-    } catch (err) {
-        console.error("Sensor fetch error:", err);
-        systemStatusEl.textContent = "Connection error";
-        setColor(systemStatusEl, 'red');
-    }
-}
-
-setInterval(updateData, 2000);
-updateData();
-
 // ---- CHARTS ----
-const chartOptions = (label, color) => ({
+const chartCfg = (label, color) => ({
     type: 'line',
     data: {
         labels: [],
         datasets: [{
-            label,
-            data: [],
+            label, data: [],
             borderColor: color,
             backgroundColor: color + '22',
             borderWidth: 2,
@@ -292,47 +157,95 @@ const chartOptions = (label, color) => ({
     }
 });
 
-const tempChart = new Chart(document.getElementById('tempChart'), chartOptions('Temp °C', '#f44336'));
-const humChart  = new Chart(document.getElementById('humChart'),  chartOptions('Humidity %', '#4caf50'));
-const distChart = new Chart(document.getElementById('distChart'), chartOptions('Distance cm', '#00bcd4'));
+const tempChart = new Chart(document.getElementById('tempChart'), chartCfg('Temp °C', '#f44336'));
+const humChart  = new Chart(document.getElementById('humChart'),  chartCfg('Humidity %', '#4caf50'));
+const distChart = new Chart(document.getElementById('distChart'), chartCfg('Distance cm', '#00bcd4'));
 
-function addChartPoint(chart, label, value) {
-    if (value === -1) return;
-    chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > 20) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-    }
-    chart.update();
-}
-
-// ---- HAZARD BANNER ----
-const hazardBanner = document.getElementById('hazard-banner');
-
-function setHazard(active) {
-    hazardBanner.style.display = active ? 'block' : 'none';
-}
-
-// ---- EXTEND updateData TO FEED CHARTS + HAZARD ----
-const _origUpdateData = updateData;
+// ---- SINGLE updateData — sensor + charts + hazard ----
 async function updateData() {
-    await _origUpdateData();
+    // 1. Live sensor card updates
+    try {
+        const res  = await fetch('/sensor');
+        const data = await res.json();
 
-    // Feed charts from /history endpoint
+        if (!data.raw) {
+            systemStatusEl.textContent = "Waiting for sensor data...";
+            setColor(systemStatusEl, 'yellow');
+        } else {
+            const { temp, hum, dist, smoke, joy_x: joyX, joy_y: joyY } = data;
+
+            // Temperature
+            if (temp === -1) {
+                tempEl.textContent = "DHT11 Error"; setColor(tempEl, 'red');
+            } else {
+                tempEl.textContent = `${temp.toFixed(1)} °C`;
+                setColor(tempEl, temp > 35 ? 'red' : temp > 28 ? 'yellow' : 'green');
+                const tBar = document.getElementById('temp-bar');
+                if (tBar) tBar.style.width = Math.min((temp / 60) * 100, 100) + "%";
+            }
+
+            // Humidity
+            if (hum === -1) {
+                humEl.textContent = "DHT11 Error"; setColor(humEl, 'red');
+            } else {
+                humEl.textContent = `${hum.toFixed(1)} %`;
+                const humColor = hum > 80 ? 'red' : hum > 60 ? 'yellow' : 'green';
+                setColor(humEl, humColor);
+                const hBar = document.getElementById('hum-bar');
+                if (hBar) {
+                    hBar.style.width = `${hum}%`;
+                    hBar.style.backgroundColor = humColor === 'red' ? '#f44336' : humColor === 'yellow' ? '#ffc107' : '#4caf50';
+                }
+            }
+
+            // Distance
+            if (dist === -1) {
+                distEl.textContent = "No object detected"; setColor(distEl, 'yellow');
+                const dBar = document.getElementById('dist-bar');
+                if (dBar) dBar.style.width = "0%";
+            } else {
+                distEl.textContent = `${dist.toFixed(1)} cm`;
+                const distColor = dist < 10 ? 'red' : dist < 30 ? 'yellow' : 'green';
+                setColor(distEl, distColor);
+                const dBar = document.getElementById('dist-bar');
+                if (dBar) {
+                    dBar.style.width = Math.min(100 - (dist / 400) * 100, 100) + "%";
+                    dBar.style.backgroundColor = distColor === 'red' ? '#f44336' : distColor === 'yellow' ? '#ffc107' : '#00bcd4';
+                }
+            }
+
+            // Smoke
+            smokeEl.textContent = `${smoke} ${smoke > 400 ? "ALERT" : "Clear"}`;
+            setColor(smokeEl, smoke > 400 ? 'red' : smoke > 300 ? 'yellow' : 'green');
+            if (smoke > 400) showAlert("Smoke detected! Level: " + smoke);
+            const sLight = document.getElementById('smoke-status-light');
+            if (sLight) {
+                sLight.style.backgroundColor = smoke > 400 ? "#f44336" : "transparent";
+                sLight.style.borderColor      = smoke > 400 ? "#f44336" : "#444";
+            }
+
+            // System
+            systemStatusEl.textContent = "ONLINE";
+            setColor(systemStatusEl, 'green');
+            lastUpdatedEl.textContent  = "Last Updated: " + new Date().toLocaleTimeString();
+        }
+    } catch (err) {
+        console.error("Sensor fetch error:", err);
+        systemStatusEl.textContent = "Connection error";
+        setColor(systemStatusEl, 'red');
+    }
+
+    // 2. Charts + hazard from /history
     try {
         const res  = await fetch('/history?limit=20');
         const rows = await res.json();
         if (!rows || rows.error) return;
 
-        // Rebuild charts from fresh history (reversed so oldest first)
         const sorted = rows.slice().reverse();
-        tempChart.data.labels = [];
-        tempChart.data.datasets[0].data = [];
-        humChart.data.labels  = [];
-        humChart.data.datasets[0].data  = [];
-        distChart.data.labels = [];
-        distChart.data.datasets[0].data = [];
+
+        tempChart.data.labels = []; tempChart.data.datasets[0].data = [];
+        humChart.data.labels  = []; humChart.data.datasets[0].data  = [];
+        distChart.data.labels = []; distChart.data.datasets[0].data = [];
 
         sorted.forEach(r => {
             const label = r.timestamp ? r.timestamp.slice(11, 19) : '';
@@ -345,14 +258,15 @@ async function updateData() {
         humChart.update();
         distChart.update();
 
-        // Hazard banner — check latest reading's joystick
+        // Hazard banner
         if (rows.length > 0) {
             const latest = rows[0];
-            const inHazard = latest.joy_x <= 100 && latest.joy_y <= 100;
-            setHazard(inHazard);
+            setHazard(latest.joy_x <= 100 && latest.joy_y <= 100);
         }
-
     } catch(e) {
         console.error('History fetch error:', e);
     }
 }
+
+setInterval(updateData, 2000);
+updateData();
