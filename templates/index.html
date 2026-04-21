@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Industrial Dashboard</title>
+  <!-- 
+  test with local computer
+  <link rel="stylesheet" href="../static/style.css">
+  -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
 </head>
 <body>
@@ -23,21 +27,34 @@
     <div class="card">
       <h2>Temperature</h2>
       <div id="temperature" class="metric green">-- °C</div>
+      <div class="prog-bar">
+        <div id="temp-bar" class="temp-prog-fill"></div>
+      </div>
     </div>
+    
 
     <div class="card">
       <h2>Humidity</h2>
       <div id="humidity" class="metric green">-- %</div>
+      <div class="prog-bar">
+        <div id="hum-bar" class="hum-prog-fill"></div>
+      </div>
     </div>
 
     <div class="card">
       <h2>Distance (HC-SR04)</h2>
       <div id="distance" class="metric green">-- cm</div>
+      <div class="prog-bar">
+        <div id="dist-bar" class="dist-prog-fill"></div>
+      </div>
     </div>
 
     <div class="card">
       <h2>Smoke / MQ-2</h2>
       <div id="smoke" class="metric green">-- </div>
+      <div class="smoke-indicator">
+        <div id="smoke-status-light" class="status-light"></div>
+      </div>
     </div>
 
     <div class="card">

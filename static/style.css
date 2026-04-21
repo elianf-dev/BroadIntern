@@ -119,3 +119,50 @@ h2 {
   border: none;
   color: white;
 }
+
+.prog-bar {
+  width: 100%;
+  background-color: #333;
+  border-radius: 4px;
+  height: 15px;
+  margin-top: 15px;
+  border: 1px solid #444;
+  overflow: hidden;
+}
+
+.temp-prog-fill {
+  height: 100%;
+  width: 0%; 
+  background-color: #f44336;
+  transition: width 0.4s ease-out;
+}
+
+.dist-prog-fill {
+  height: 100%;
+  width: 0%; 
+  background-color: #00bcd4;
+  transition: width 0.4s ease-out;
+}
+
+.hum-prog-fill {
+  height: 100%;
+  width: 0%; 
+  background-color: #4caf50;
+  transition: width 0.4s ease-out, background-color 0.4s;
+}
+
+.smoke-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.status-light {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: transparent; 
+    border: 2px solid #444; 
+    transition: background-color 0.2s ease;
+    margin: 0 auto;
+}

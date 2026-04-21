@@ -178,6 +178,16 @@ async function updateData() {
             tempEl.textContent = `${temp.toFixed(1)} °C`;
             setColor(tempEl, temp > 35 ? 'red' : temp > 28 ? 'yellow' : 'green');
         }
+        
+        if (temp !== -1) {
+            tempEl.textContent = `${temp.toFixed(1)} °C`;
+            
+            const tempPercent = Math.min(Math.max((temp / 60) * 100, 0), 100);
+            
+            const tBar = document.getElementById('temp-bar');
+            tBar.style.width = tempPercent + "%";
+
+        }
 
         // Humidity
         if (hum === -1) {
@@ -185,22 +195,56 @@ async function updateData() {
             setColor(humEl, 'red');
         } else {
             humEl.textContent = `${hum.toFixed(1)} %`;
-            setColor(humEl, hum > 80 ? 'red' : hum > 60 ? 'yellow' : 'green');
+        
+            const humColor = hum > 80 ? 'red' : hum > 60 ? 'yellow' : 'green';
+        
+            setColor(humEl, humColor);
+        
+            const hBar = document.getElementById('hum-bar');
+            if (hBar) {
+                hBar.style.width = `${hum}%`;
+                hBar.style.backgroundColor = humColor === 'red' ? '#f44336' : 
+                                             humColor === 'yellow' ? '#ffc107' : '#4caf50';
+            }
         }
 
         // Distance
         if (dist === -1) {
             distEl.textContent = "No object detected";
             setColor(distEl, 'yellow');
+            if (dBar) dBar.style.width = "0%";
         } else {
             distEl.textContent = `${dist.toFixed(1)} cm`;
-            setColor(distEl, dist < 10 ? 'red' : dist < 30 ? 'yellow' : 'green');
+        
+            const distColor = dist < 10 ? 'red' : dist < 30 ? 'yellow' : 'green';
+            setColor(distEl, distColor);
+        
+            const proximityPercent = Math.min(Math.max(100 - (dist / 400) * 100, 0), 100);
+        
+            const dBar = document.getElementById('dist-bar');
+            if (dBar) {
+                dBar.style.width = proximityPercent + "%";
+                dBar.style.backgroundColor = distColor === 'red' ? '#f44336' : 
+                                             distColor === 'yellow' ? '#ffc107' : '#4caf50';
+            }
         }
 
         // Smoke
         smokeEl.textContent = `${smoke} ${smoke > 400 ? "ALERT" : "Clear"}`;
         setColor(smokeEl, smoke > 400 ? 'red' : smoke > 300 ? 'yellow' : 'green');
         if (smoke > 400) showAlert("Smoke detected! Level: " + smoke);
+        
+        const sLight = document.getElementById('smoke-status-light');
+        if (sLight) {
+            if (smoke > 400) {
+                sLight.style.backgroundColor = "#f44336"; 
+                sLight.style.borderColor = "#f44336";
+            } else {
+                sLight.style.backgroundColor = "transparent";
+                sLight.style.borderColor = "#444";
+            }
+        }
+
 
         // Joystick
         joystickEl.textContent = `X: ${joyX} / Y: ${joyY}`;
