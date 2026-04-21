@@ -158,13 +158,21 @@ def read_sensor_stream():
             joy_x = int(parts[4])
             joy_y = int(parts[5])
             
-            # Deadzone filter
+            # Raw joystick for hazard detection (before deadzone)
+            raw_joy_x = int(parts[4])
+            raw_joy_y = int(parts[5])
 
-            if abs(joy_x - 512) < 20: 
+            # Deadzone filter
+            if abs(joy_x - 512) < 20:
                 joy_x = 512
             if abs(joy_y - 512) < 20:
                 joy_y = 512
 
+            # Auto emergency trigger
+            check_auto_emergency(smoke, dist)
+
+            # Joystick hazard check
+            check_joystick_hazard(raw_joy_x, raw_joy_y)
 
             conn = sqlite3.connect("chatbot.db")
             cursor = conn.cursor()
@@ -214,6 +222,65 @@ def get_sensor_data():
             })
         else:
             return jsonify({"raw": None, "timestamp": None})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# -----------------------------
+# Auto emergency trigger
+# Called from sensor stream when thresholds are breached
+# -----------------------------
+emergency_active = False
+
+def check_auto_emergency(smoke, dist):
+    global emergency_active
+    should_trigger = (smoke > 400) or (dist != -1 and dist < 20)
+    if should_trigger and not emergency_active:
+        emergency_active = True
+        print("[AUTO-EMERGENCY] Threshold breached — triggering ALERT_ON")
+        send_serial_command("ALERT_ON")
+    elif not should_trigger and emergency_active:
+        emergency_active = False
+        print("[AUTO-EMERGENCY] Values normal — triggering ALERT_OFF")
+        send_serial_command("ALERT_OFF")
+
+# -----------------------------
+# Joystick hazard check
+# Triggered from sensor stream when joy_x and joy_y are in 0-100 range
+# -----------------------------
+hazard_active = False
+
+def check_joystick_hazard(joy_x, joy_y):
+    global hazard_active
+    in_hazard_zone = (0 <= joy_x <= 100) and (0 <= joy_y <= 100)
+    if in_hazard_zone and not hazard_active:
+        hazard_active = True
+        print("[JOYSTICK-HAZARD] Hazard zone detected — triggering ALERT_ON")
+        send_serial_command("ALERT_ON")
+    elif not in_hazard_zone and hazard_active:
+        hazard_active = False
+        print("[JOYSTICK-HAZARD] Joystick returned to normal")
+        send_serial_command("ALERT_OFF")
+
+# -----------------------------
+# History endpoint — last N sensor readings
+# -----------------------------
+@app.route("/history", methods=["GET"])
+def get_history():
+    try:
+        limit = int(request.args.get("limit", 10))
+        conn = sqlite3.connect("chatbot.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT temp, hum, dist, smoke, joy_x, joy_y, timestamp
+               FROM sensor_data ORDER BY id DESC LIMIT ?""",
+            (limit,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify([{
+            "temp": r[0], "hum": r[1], "dist": r[2],
+            "smoke": r[3], "joy_x": r[4], "joy_y": r[5], "timestamp": r[6]
+        } for r in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -283,6 +350,59 @@ def ask():
     elif "all" in tokens and "off" in tokens:
         ok, reply = send_serial_command("ALL_OFF")
         response = f"All off command sent. Nano says: {reply}" if ok else f"All off failed: {reply}"
+
+    # ----- MORNING ROUTINE -----
+    elif "morning" in tokens:
+        results = []
+        ok1, r1 = send_serial_command("LED_ON")
+        results.append(f"LED ON: {r1}")
+        ok2, r2 = send_serial_command("BUZZ_OFF")
+        results.append(f"Buzzer OFF: {r2}")
+        ok3, r3 = send_serial_command("ALERT_OFF")
+        results.append(f"Alert OFF: {r3}")
+        response = "Morning routine executed. " + " | ".join(results)
+
+    # ----- NIGHT ROUTINE -----
+    elif "night" in tokens:
+        results = []
+        ok1, r1 = send_serial_command("LED_OFF")
+        results.append(f"LED OFF: {r1}")
+        ok2, r2 = send_serial_command("BUZZ_OFF")
+        results.append(f"Buzzer OFF: {r2}")
+        ok3, r3 = send_serial_command("ALERT_OFF")
+        results.append(f"Alert OFF: {r3}")
+        response = "Night routine executed. " + " | ".join(results)
+
+    # ----- HISTORICAL DATA QUERY -----
+    elif "last" in tokens or "history" in tokens or "show" in tokens or "data" in tokens:
+        # Extract number from tokens if present e.g. "show last 10 data"
+        limit = 5
+        for token in doc:
+            if token.like_num:
+                try:
+                    limit = min(int(token.text), 50)
+                    break
+                except:
+                    pass
+        try:
+            conn = sqlite3.connect("chatbot.db")
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT temp, hum, dist, smoke, timestamp
+                   FROM sensor_data ORDER BY id DESC LIMIT ?""",
+                (limit,)
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            if rows:
+                lines = [f"Last {len(rows)} readings:"]
+                for r in rows:
+                    lines.append(f"  {r[4][:19]} | T:{r[0]}°C H:{r[1]}% D:{r[2]}cm S:{r[3]}")
+                response = "\n".join(lines)
+            else:
+                response = "No historical data found in database."
+        except Exception as e:
+            response = f"DB query error: {e}"
 
     else:
         response = f"Analyzed: {user_input}. No hardware intent found."
