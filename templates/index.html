@@ -58,6 +58,86 @@
     </div>
 
     <div class="card">
+      <h2>Buzzer</h2>
+      <div id="buzzer-status" class="metric green">OFF</div>
+    </div>
+
+    <div class="card">
+      <h2>LED</h2>
+      <div id="led-status" class="metric green">OFF</div>
+    </div>
+
+  </div>
+
+  <!-- Hazard Banner -->
+  <div id="hazard-banner" style="display:none;">
+    ⚠️ JOYSTICK HAZARD STATE DETECTED
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-section">
+    <h2 style="color:#fff; padding: 10px 20px;">Sensor History</h2>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Temperature (°C)</h3>
+        <canvas id="tempChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Humidity (%)</h3>
+        <canvas id="humChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Distance (cm)</h3>
+        <canvas id="distChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chatbot Button -->
+  <button id="chatbot-btn">💬</button>
+
+  <!-- Chat Panel -->
+  <div id="chat-panel">
+    <div id="chat-header">Industrial Bot</div>
+    <div id="chat-messages">
+      <div class="message bot-msg">Hello! I am your industrial assistant.</div>
+    </div>
+    <div id="chat-input">
+      <input type="text" id="user-input" placeholder="Type message...">
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <!-- Hidden joystick element so script.js refs don't break -->
+  <div id="joystick" style="display:none;"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='script.js')}}"></script>
+</body>
+</html>      <h2>Humidity</h2>
+      <div id="humidity" class="metric green">-- %</div>
+      <div class="prog-bar">
+        <div id="hum-bar" class="hum-prog-fill"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Distance (HC-SR04)</h2>
+      <div id="distance" class="metric green">-- cm</div>
+      <div class="prog-bar">
+        <div id="dist-bar" class="dist-prog-fill"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Smoke / MQ-2</h2>
+      <div id="smoke" class="metric green">-- </div>
+      <div class="smoke-indicator">
+        <div id="smoke-status-light" class="status-light"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Joystick</h2>
       <div id="joystick" class="metric green">X: -- / Y: --</div>
     </div>
