@@ -157,6 +157,14 @@ def read_sensor_stream():
             smoke = int(parts[3])
             joy_x = int(parts[4])
             joy_y = int(parts[5])
+            
+            # Deadzone filter
+
+            if abs(joy_x - 512) < 20: 
+                joy_x = 512
+            if abs(joy_y - 512) < 20:
+                joy_y = 512
+
 
             conn = sqlite3.connect("chatbot.db")
             cursor = conn.cursor()
