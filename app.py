@@ -84,9 +84,9 @@ def connect_nano():
 def send_serial_command(command):
     global nano
 
-    # FIX: signal stream thread to pause, wait for it to finish current read
+    # Signal stream thread to pause, wait long enough for it to finish current readline
     sending_command.set()
-    time.sleep(0.3)
+    time.sleep(0.5)  # increased from 0.3 — gives stream thread time to exit its readline
 
     with serial_lock:
         if nano is None or not nano.is_open:
@@ -97,16 +97,18 @@ def send_serial_command(command):
         try:
             nano.reset_input_buffer()
             nano.write(f"{command}\n".encode())
-            time.sleep(0.2)
+            time.sleep(0.4)  # increased from 0.2 — Nano needs time to process and reply
 
-            # Read several lines — DATA: streams continuously, skip those
-            for _ in range(10):
+            # Read up to 20 lines with a deadline — skip DATA: stream lines, grab first ACK
+            deadline = time.time() + 2.0  # 2-second timeout
+            while time.time() < deadline:
                 line = nano.readline().decode(errors="ignore").strip()
                 if not line:
                     continue
                 if line.startswith("DATA:"):
-                    continue
-                sending_command.clear()  # FIX: resume stream thread
+                    continue  # skip sensor stream lines, keep waiting for ACK
+                print(f"[ACK] {line}")
+                sending_command.clear()
                 return True, line
 
             sending_command.clear()
@@ -114,7 +116,7 @@ def send_serial_command(command):
 
         except Exception as e:
             print(f"--- SERIAL WRITE ERROR: {e} ---")
-            sending_command.clear()  # FIX: always resume even on error
+            sending_command.clear()  # always resume even on error
             return False, str(e)
 
 # -----------------------------
