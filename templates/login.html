@@ -1,27 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Page</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broadino Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
 </head>
-<body id = "login-page">
+<body>
 
+  <div id="login-page">
     <div id="login-header">
-        <h1>Broadino Team Dashboard Login</h1>
+      <h1>Broadino Dashboard</h1>
+      <p>Sign in to continue</p>
     </div>
 
     <div class="login-container">
+      {% if error %}
+        <div class="login-error">{{ error }}</div>
+      {% endif %}
 
-        <label for="username"><b>Username</b></label>
-        <input type="text" placeholder="Enter Username" name="username" required>
+      <form method="POST" action="/login">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Enter username" required autofocus>
 
-        <label for="password"><b>Password</b></label>
-        <input type="password" placeholder="Enter Password" name="password" required>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Enter password" required>
+
         <button type="submit">Login</button>
-
+      </form>
     </div>
-    
+  </div>
+
 </body>
 </html>
