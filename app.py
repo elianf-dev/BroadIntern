@@ -289,14 +289,16 @@ emergency_active = False
 
 def check_auto_emergency(smoke, dist):
     global emergency_active
-    should_trigger = (smoke > 400) or (dist != -1 and dist < 20)
-    if should_trigger and not emergency_active:
+    # Smoke triggers banner only (no hardware alert) — MQ-2 needs warm-up
+    # Distance < 20cm triggers full hardware ALERT_ON
+    hardware_trigger = (dist != -1 and dist < 20)
+    if hardware_trigger and not emergency_active:
         emergency_active = True
-        print("[AUTO-EMERGENCY] Threshold breached — triggering ALERT_ON")
+        print("[AUTO-EMERGENCY] Distance threshold breached — triggering ALERT_ON")
         send_serial_command("ALERT_ON")
-    elif not should_trigger and emergency_active:
+    elif not hardware_trigger and emergency_active:
         emergency_active = False
-        print("[AUTO-EMERGENCY] Values normal — triggering ALERT_OFF")
+        print("[AUTO-EMERGENCY] Distance normal — triggering ALERT_OFF")
         send_serial_command("ALERT_OFF")
 
 # -----------------------------
